@@ -1,0 +1,25 @@
+"use client";
+
+import { ReactNode } from "react";
+import { useSwipeable } from "react-swipeable";
+import { Tab } from "@/app/page";
+
+const order: Tab[] = ["home", "search", "notify", "profile"];
+
+type Props = {
+  active: Tab;
+  setActive: (t: Tab) => void;
+  children: ReactNode;
+};
+
+export default function SwipeWrapper({ active, setActive, children }: Props) {
+  const index = order.indexOf(active);
+
+  const handlers = useSwipeable({
+    onSwipedLeft: () => index < order.length - 1 && setActive(order[index + 1]),
+    onSwipedRight: () => index > 0 && setActive(order[index - 1]),
+    preventScrollOnSwipe: true,
+  });
+
+  return <div {...handlers}>{children}</div>;
+}
