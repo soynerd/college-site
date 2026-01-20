@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { useSwipeable } from "react-swipeable";
 import { Tab } from "@/app/page";
 
@@ -15,11 +15,19 @@ type Props = {
 export default function SwipeWrapper({ active, setActive, children }: Props) {
   const index = order.indexOf(active);
 
-  const handlers = useSwipeable({
-    onSwipedLeft: () => index < order.length - 1 && setActive(order[index + 1]),
-    onSwipedRight: () => index > 0 && setActive(order[index - 1]),
-    preventScrollOnSwipe: true,
-  });
+  const handlers = useSwipeable(
+    useMemo(
+      () => ({
+        onSwipedLeft: () =>
+          index < order.length - 1 && setActive(order[index + 1]),
+        onSwipedRight: () => index > 0 && setActive(order[index - 1]),
+        preventScrollOnSwipe: true,
+        trackMouse: false, // 🔒 CRITICAL (prevents document listeners)
+        trackTouch: true,
+      }),
+      [index, setActive],
+    ),
+  );
 
   return <div {...handlers}>{children}</div>;
 }
