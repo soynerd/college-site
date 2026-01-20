@@ -22,7 +22,7 @@ export default function SwipeWrapper({ active, setActive, children }: Props) {
           index < order.length - 1 && setActive(order[index + 1]),
         onSwipedRight: () => index > 0 && setActive(order[index - 1]),
         preventScrollOnSwipe: true,
-        trackMouse: false, // 🔒 CRITICAL (prevents document listeners)
+        trackMouse: false,
         trackTouch: true,
       }),
       [index, setActive],
