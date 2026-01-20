@@ -39,7 +39,7 @@ function applyTheme(theme: "light" | "dark" | "system") {
 
   if (theme === "system") {
     const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
+      "(prefers-color-scheme: dark)",
     ).matches;
     root.classList.add(prefersDark ? "dark" : "light");
   } else {
@@ -102,7 +102,7 @@ export default function Profile() {
   /* dirty state */
   const isDirty = useMemo(
     () => JSON.stringify(form) !== JSON.stringify(initialForm),
-    [form]
+    [form],
   );
 
   const percent = completion(form);
@@ -128,7 +128,7 @@ export default function Profile() {
           Long: longitude.toFixed(2),
         });
       },
-      () => setLocError("Location permission denied")
+      () => setLocError("Location permission denied"),
     );
   };
 

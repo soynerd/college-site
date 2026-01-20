@@ -30,9 +30,20 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // ✅ track pending timeouts
+  const timeoutsRef = useRef<number[]>([]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // ✅ cleanup on unmount
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+    };
+  }, []);
 
   const send = (text: string) => {
     if (!text.trim()) return;
@@ -40,7 +51,7 @@ export default function ChatPage() {
     setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", text }]);
     setInput("");
 
-    setTimeout(() => {
+    const id = window.setTimeout(() => {
       setMessages((m) => [
         ...m,
         {
@@ -60,6 +71,8 @@ export default function ChatPage() {
         },
       ]);
     }, 600);
+
+    timeoutsRef.current.push(id);
   };
 
   return (
