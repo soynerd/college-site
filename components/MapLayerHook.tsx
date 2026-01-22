@@ -13,48 +13,69 @@ export function useMarkerLayer({
 }) {
   const { map, isLoaded } = useMap();
   const id = useId();
+
   const sourceId = `people-src-${id}`;
   const layerId = `people-layer-${id}`;
 
   const [ready, setReady] = useState(false);
   const [selected, setSelected] = useState<any>(null);
 
-  /* create layer */
+  /* ================= CREATE LAYER ================= */
   useEffect(() => {
     if (!map || !isLoaded) return;
 
-    map.addSource(sourceId, { type: "geojson", data: geoJson });
+    const m = map;
 
-    map.addLayer({
-      id: layerId,
-      type: "circle",
-      source: sourceId,
-      paint: {
-        "circle-radius": ["case", ["get", "isUser"], 9, 6],
-        "circle-color": ["case", ["get", "isUser"], "#3b82f6", "#71717a"],
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#fff",
-      },
-    });
+    if (m._removed) return;
 
-    map.on("click", layerId, (e) => {
+    if (!m.getSource(sourceId)) {
+      m.addSource(sourceId, {
+        type: "geojson",
+        data: geoJson,
+      });
+    }
+
+    if (!m.getLayer(layerId)) {
+      m.addLayer({
+        id: layerId,
+        type: "circle",
+        source: sourceId,
+        paint: {
+          "circle-radius": ["case", ["get", "isUser"], 9, 6],
+          "circle-color": ["case", ["get", "isUser"], "#3b82f6", "#71717a"],
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#fff",
+        },
+      });
+    }
+
+    const handleClick = (e: any) => {
       if (!e.features?.length) return;
       const f = e.features[0];
       const [lng, lat] = (f.geometry as Point).coordinates;
       setSelected({ ...f.properties, lng, lat });
-    });
+    };
 
+    m.on("click", layerId, handleClick);
     setReady(true);
 
     return () => {
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-    };
-  }, [map, isLoaded, geoJson]);
+      if (!m || m._removed) return;
 
-  /* filter */
+      try {
+        m.off("click", layerId, handleClick);
+
+        if (m.getLayer(layerId)) m.removeLayer(layerId);
+        if (m.getSource(sourceId)) m.removeSource(sourceId);
+      } catch {
+        // ignore — map already destroyed
+      }
+    };
+  }, [map, isLoaded, geoJson, sourceId, layerId]);
+
+  /* ================= FILTER ================= */
   useEffect(() => {
-    if (!map || !ready) return;
+    if (!map || map._removed || !ready) return;
     if (!map.getLayer(layerId)) return;
 
     map.setFilter(layerId, [
@@ -62,7 +83,7 @@ export function useMarkerLayer({
       ["boolean", ["get", "isUser"], false],
       ["in", ["get", "year"], ["literal", years]],
     ]);
-  }, [map, ready, years]);
+  }, [map, ready, years, layerId]);
 
   return {
     selected,
