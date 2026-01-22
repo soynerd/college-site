@@ -91,7 +91,7 @@ export default function SemiCircleGraph({ f }: { f: Faculty }) {
                       dominantBaseline="middle"
                       fontSize="36"
                       fontWeight="700"
-                      fill="#111"
+                      fill="#fff"
                     >
                       {maxPercentage}%
                     </text>
@@ -100,7 +100,7 @@ export default function SemiCircleGraph({ f }: { f: Faculty }) {
                       y="95%"
                       textAnchor="middle"
                       fontSize="12"
-                      fill="#666"
+                      fill="#999"
                     >
                       {maxCategory}
                     </text>
