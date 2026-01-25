@@ -2,7 +2,7 @@
 
 import { Home, Search, Bell, User } from "lucide-react";
 import { motion } from "framer-motion";
-import { Tab } from "@/app/page";
+import { Tab } from "@/components/Screen";
 
 type Props = {
   active: Tab;

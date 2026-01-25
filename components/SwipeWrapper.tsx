@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo } from "react";
 import { useSwipeable } from "react-swipeable";
-import { Tab } from "@/app/page";
+import { Tab } from "@/components/Screen";
 
 const order: Tab[] = ["home", "search", "notify", "profile"];
 

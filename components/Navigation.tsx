@@ -3,7 +3,7 @@
 import { Home, Search, Bell, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import type { Tab } from "@/app/page";
+import type { Tab } from "@/components/Screen";
 export default function BottomNav() {
   const router = useRouter();
 
