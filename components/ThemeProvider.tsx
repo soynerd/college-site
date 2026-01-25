@@ -23,16 +23,21 @@ function applyTheme(theme: Theme) {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("system");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("theme") as Theme | null;
     if (saved) setTheme(saved);
+    setMounted(true);
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     applyTheme(theme);
     localStorage.setItem("theme", theme);
-  }, [theme]);
+  }, [theme, mounted]);
+
+  if (!mounted) return null;
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
