@@ -1,3 +1,4 @@
+"use client";
 export function CardSkeleton() {
   return (
     <div className="min-w-35 rounded-xl bg-[#1a2035] p-4 animate-pulse">
@@ -14,6 +15,34 @@ export function PageSkeleton() {
       <div className="flex gap-3">
         <CardSkeleton />
         <CardSkeleton />
+      </div>
+    </div>
+  );
+}
+
+export function MapSkeleton() {
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-zinc-900">
+      {/* shimmer background */}
+      <div className="absolute inset-0 animate-pulse bg-linear-to-br from-zinc-800 via-zinc-700 to-zinc-800" />
+
+      {/* fake markers */}
+      <div className="absolute inset-0">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <span
+            key={i}
+            className="absolute h-3 w-3 rounded-full bg-blue-500/60"
+            style={{
+              top: `${10 + Math.random() * 70}%`,
+              left: `${10 + Math.random() * 80}%`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* loading text */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-xs text-white">
+        Loading map…
       </div>
     </div>
   );
