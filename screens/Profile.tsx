@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useContext } from "react";
+import { ThemeContext } from "@/components/ThemeProvider";
+import { User } from "@prisma/client";
 import {
   Camera,
   LogOut,
@@ -13,10 +16,20 @@ import {
   Laptop,
   MapPin,
 } from "lucide-react";
+import { saveUser } from "@/lib/data/saveUser";
+import { ProfileForm } from "@/lib/types/profileForm";
+import { useStructure } from "@/components/useStructure";
+import { Dropdown } from "@/components/Dropdown";
+
+const SEMESTER_MAP: Record<string, number> = {
+  "b-tech": 8,
+  "m-tech": 4,
+  MCA: 6,
+};
 
 /* ---------- helpers ---------- */
-function timeAgo(ts: number) {
-  const diff = Date.now() - ts;
+function timeAgo(ts: Date) {
+  const diff = Date.now() - ts.getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return "just now";
   if (m < 60) return `${m}m ago`;
@@ -25,45 +38,19 @@ function timeAgo(ts: number) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function formatDate(ts: number) {
-  return new Date(ts).toLocaleDateString("en-IN", {
+function formatDate(ts: Date) {
+  return ts.toLocaleDateString("en-IN", {
     month: "short",
     year: "numeric",
   });
 }
-
-/* ---------- theme ---------- */
-function applyTheme(theme: "light" | "dark" | "system") {
-  const root = document.documentElement;
-  root.classList.remove("light", "dark");
-
-  if (theme === "system") {
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    root.classList.add(prefersDark ? "dark" : "light");
-  } else {
-    root.classList.add(theme);
-  }
-}
-
-/* ---------- mock user ---------- */
-const user = {
-  name: "Naveen Kumar",
-  email: "naveen@gmail.com",
-  role: "Student",
-  joinedAt: 1735689600000,
-  lastLogin: Date.now() - 1000 * 60 * 60 * 2,
-  provider: "Google",
-  photo: "/avatar.png",
-};
 
 /* ---------- completion ---------- */
 function completion(f: any) {
   const fields = [
     f.displayName,
     f.username,
-    f.branch,
+    f.degree,
     f.department,
     f.semester,
     f.year,
@@ -74,35 +61,36 @@ function completion(f: any) {
   return Math.round((fields.filter(Boolean).length / fields.length) * 100);
 }
 
-export default function Profile() {
-  const initialForm = {
-    displayName: user.name,
-    username: "",
-    branch: "",
-    department: "",
-    semester: "",
-    year: "",
-    Lat: "",
-    Long: "",
-    photo: user.photo,
-    theme: "system" as "light" | "dark" | "system",
-    notifications: true,
-  };
+export default function Profile({ user }: { user: User | null }) {
+  if (!user) {
+    return (
+      <div className="h-full flex items-center justify-center text-zinc-400">
+        Not logged in, Don't mess!!
+      </div>
+    );
+  }
+  const [initialForm, setInitialForm] = useState<ProfileForm>({
+    displayName: user.name ?? "Lorem Ipsum",
+    username: user.username ?? "",
+    degree: user.degree ?? "",
+    department: user.department ?? "",
+    semester: user.semester?.toString() ?? "",
+    year: user.year?.toString() ?? "",
+    Lat: user.lat?.toString() ?? "",
+    Long: user.long?.toString() ?? "",
+    photo: user.image || "https://i.ibb.co/gbJMf9HB/luffy-pfp.jpg",
+  });
 
   const [form, setForm] = useState(initialForm);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locError, setLocError] = useState("");
-
-  /* apply theme */
-  useEffect(() => {
-    applyTheme(form.theme);
-  }, [form.theme]);
+  const { theme, setTheme } = useContext(ThemeContext);
 
   /* dirty state */
   const isDirty = useMemo(
     () => JSON.stringify(form) !== JSON.stringify(initialForm),
-    [form],
+    [form, initialForm],
   );
 
   const percent = completion(form);
@@ -124,8 +112,8 @@ export default function Profile() {
         const { latitude, longitude } = pos.coords;
         setForm({
           ...form,
-          Lat: latitude.toFixed(2),
-          Long: longitude.toFixed(2),
+          Lat: latitude.toFixed(4),
+          Long: longitude.toFixed(4),
         });
       },
       () => setLocError("Location permission denied"),
@@ -135,11 +123,25 @@ export default function Profile() {
   /* save */
   const saveProfile = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 1200));
+    console.log(form);
+    await saveUser(form);
+    setInitialForm(form);
     setSaving(false);
   };
 
   const cancelChanges = () => setForm(initialForm);
+
+  const { data: degrees } = useStructure();
+
+  const selectedDegree = degrees.find((d) => d.name === form.degree);
+  const departments = selectedDegree?.departments ?? [];
+
+  const maxSem = SEMESTER_MAP[form.degree?.toLowerCase()] ?? 0;
+
+  const semesterOptions = Array.from({ length: maxSem }, (_, i) => ({
+    id: i + 1,
+    name: `Sem ${i + 1}`,
+  }));
 
   return (
     <div className="relative h-full bg-linear-to-br from-zinc-900 via-black to-zinc-900 text-white overflow-y-auto">
@@ -186,7 +188,7 @@ export default function Profile() {
             Profile completion • {percent}%
           </p>
 
-          <h2 className="mt-2 text-lg font-semibold">{form.displayName}</h2>
+          <h2 className="mt-2 text-lgfont-semibold">{form.displayName}</h2>
 
           <span className="mt-1 text-xs px-3 py-1 rounded-full bg-blue-600/20 text-blue-400">
             {user.role}
@@ -210,24 +212,43 @@ export default function Profile() {
           />
 
           <TwoCol>
-            <Input
-              label="Branch"
-              value={form.branch}
-              onChange={(v: any) => setForm({ ...form, branch: v })}
+            <Dropdown
+              label="Degree"
+              value={form.degree}
+              options={degrees}
+              onChange={(d: any) =>
+                setForm({
+                  ...form,
+                  degree: d.name,
+                  department: "",
+                  semester: "",
+                  year: "",
+                })
+              }
             />
-            <Input
+
+            <Dropdown
               label="Department"
               value={form.department}
-              onChange={(v: any) => setForm({ ...form, department: v })}
+              options={departments}
+              disabled={!form.degree}
+              onChange={(dep: any) =>
+                setForm({ ...form, department: dep.name })
+              }
             />
           </TwoCol>
 
           <TwoCol>
-            <Input
+            <Dropdown
               label="Semester"
               value={form.semester}
-              onChange={(v: any) => setForm({ ...form, semester: v })}
+              options={semesterOptions}
+              disabled={!form.degree}
+              onChange={(s: any) =>
+                setForm({ ...form, semester: s.id.toString() })
+              }
             />
+
             <Input
               label="Year"
               value={form.year}
@@ -260,17 +281,14 @@ export default function Profile() {
 
         {/* account info */}
         <Section title="Account info">
-          <Info label="Joined" value={formatDate(user.joinedAt)} />
-          <Info label="Last login" value={timeAgo(user.lastLogin)} />
+          <Info label="Joined" value={formatDate(user.createdAt)} />
+          <Info label="Last login" value={timeAgo(user.lastLoginAt)} />
           <Info label="Login method" value={user.provider} />
         </Section>
 
         {/* settings */}
         <Section title="Settings">
-          <ThemePicker
-            value={form.theme}
-            onChange={(v: any) => setForm({ ...form, theme: v })}
-          />
+          <ThemePicker value={theme} onChange={setTheme} />
         </Section>
 
         {/* actions */}
