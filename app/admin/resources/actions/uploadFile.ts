@@ -14,7 +14,7 @@ export async function uploadFile(formData: FormData) {
     const academicYear = formData.get("academicYear") as string | null;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const key = `${subjectId}/${Date.now()}-${file.name}`;
+    const key = `resources/${subjectId}/${Date.now()}-${file.name}`;
 
     await r2.send(
         new PutObjectCommand({
