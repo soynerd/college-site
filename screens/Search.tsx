@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, FileText } from "lucide-react";
+import { User } from "@prisma/client";
+import { getSubjects } from "@/lib/data/getSubjects";
+import { getFiles } from "@/lib/data/getFiles";
+import { File } from "@prisma/client";
+
+/* ---------------- types ---------------- */
+
+type Subject = { id: string; name: string };
 
 type Msg = {
   id: string;
@@ -11,170 +19,246 @@ type Msg = {
   links?: { title: string; url: string }[];
 };
 
-const SUBJECTS = [
-  "Data Structures",
-  "Operating System",
-  "DBMS",
-  "Computer Networks",
-  "AI Basics",
-];
+/* ---------------- helpers ---------------- */
 
-export default function ChatPage() {
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      id: "intro",
-      role: "bot",
-      text: "Ask me about any subject. I’ll give you the **best resources + PDFs**.",
-    },
-  ]);
+const bot = (text: string, links?: Msg["links"]): Msg => ({
+  id: crypto.randomUUID(),
+  role: "bot",
+  text,
+  links,
+});
+
+const userMsg = (text: string): Msg => ({
+  id: crypto.randomUUID(),
+  role: "user",
+  text,
+});
+
+/* ---------------- component ---------------- */
+
+export default function ChatPage({ user }: { user: User | null }) {
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [hydrated, setHydrated] = useState(false);
 
-  // ✅ track pending timeouts
-  const timeoutsRef = useRef<number[]>([]);
+  /* ---------- localStorage ---------- */
+
+  /* ---------- localStorage ---------- */
+  useEffect(() => {
+    const saved = localStorage.getItem("academic-chat");
+
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem("academic-chat");
+      }
+    }
+
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    if (messages.length === 0) {
+      setMessages([
+        bot("Hi 👋 Ask me for notes, slides, or PYQs related to your degree."),
+      ]);
+    }
+  }, [hydrated]);
+
+  /* ---------- greet + load subjects ---------- */
+
+  useEffect(() => {
+    (async () => {
+      if (!user?.degree || !user?.department || !user?.semester) {
+        setMessages((m) => [
+          ...m,
+          bot("⚠️ Please complete your profile to continue."),
+        ]);
+        return;
+      }
+
+      const data = await getSubjects(
+        user.degree,
+        user.department,
+        user.semester,
+      );
+
+      setSubjects(
+        data?.subjects.map((s) => ({ id: s.id, name: s.name })) || [],
+      );
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem("academic-chat", JSON.stringify(messages));
+  }, [messages, hydrated]);
+
+  /* ---------- scroll ---------- */
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ✅ cleanup on unmount
-  useEffect(() => {
-    return () => {
-      timeoutsRef.current.forEach(clearTimeout);
-      timeoutsRef.current = [];
-    };
-  }, []);
+  /* ---------- AI CALL ---------- */
 
-  const send = (text: string) => {
-    if (!text.trim()) return;
+  async function callAI(query: string) {
+    const res = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system: `
+You are an academic assistant.
 
-    setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", text }]);
+Rules:
+- Choose subject ONLY from provided list
+- Choose resource types ONLY from allowed list
+- If unclear, ask a clarification question
+- Keep answers short
+- Respond ONLY in valid JSON
+`,
+        user: {
+          query,
+          subjects: subjects.map((s) => s.name),
+          allowedTypes: ["notes", "slides", "pyq", "pdf"],
+        },
+      }),
+    });
+
+    return res.json();
+  }
+
+  /* ---------- send ---------- */
+
+  async function send() {
+    if (!input.trim() || loading) return;
+    const query = input;
     setInput("");
+    setLoading(true);
+    setMessages((m) => [...m, userMsg(query)]);
 
-    const id = window.setTimeout(() => {
+    if (!subjects.length) {
+      setMessages((m) => [...m, bot("Subjects are still loading. Try again.")]);
+      setLoading(false);
+      return;
+    }
+
+    let ai;
+    try {
+      ai = await callAI(query);
+      console.log("AI decision:", ai);
+    } catch {
+      setMessages((m) => [...m, bot("AI error. Try again.")]);
+      setLoading(false);
+      return;
+    }
+
+    if (ai.needClarification) {
+      setMessages((m) => [...m, bot(ai.clarificationQuestion)]);
+      setLoading(false);
+      return;
+    }
+
+    const subject = subjects.find((s) => s.name == ai.subject);
+    console.log("subj", subject);
+    if (!subject) {
       setMessages((m) => [
         ...m,
-        {
-          id: crypto.randomUUID(),
-          role: "bot",
-          text: `Here are top resources for **${text}**`,
-          links: [
-            {
-              title: `${text} – Complete Notes (PDF)`,
-              url: "https://example.com/sample.pdf",
-            },
-            {
-              title: `${text} – Reference Book`,
-              url: "https://example.com/book.pdf",
-            },
-          ],
-        },
+        bot("This subject is not available for your semester."),
       ]);
-    }, 600);
+      setLoading(false);
+      return;
+    }
 
-    timeoutsRef.current.push(id);
-  };
+    const files: File[] = await getFiles(subject.id);
+    console.log(files);
+
+    const matched = files.filter((f) =>
+      ai.types.includes(f.contentType.toLowerCase()),
+    );
+
+    if (!matched.length) {
+      setMessages((m) => [...m, bot("No matching resources found.")]);
+      setLoading(false);
+      return;
+    }
+
+    setMessages((m) => [
+      ...m,
+      bot(
+        `📘 ${subject.name}`,
+        matched.map((f) => ({
+          title: `${f.title} (${f.contentType})`,
+          url: f.url,
+        })),
+      ),
+    ]);
+
+    setLoading(false);
+
+    // --- analytics (fire and forget) ---
+    fetch("/api/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        degree: user?.degree,
+        department: user?.department,
+        semester: user?.semester,
+        subject: ai.subject,
+        types: ai.types,
+        clarified: ai.needClarification,
+      }),
+    });
+  }
+
+  /* ---------------- UI ---------------- */
 
   return (
-    <div className="relative mb-20 h-full bg-linear-to-br from-zinc-900 via-black to-zinc-900 text-white overflow-hidden">
-      {/* Glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#3b82f630,transparent_60%)]" />
+    <div className="h-full flex flex-col text-white max-w-3xl mx-auto">
+      <h1 className="pt-6 text-center text-xl font-semibold shrink-0">
+        Academic Resource Chat
+      </h1>
 
-      {/* ✅ PAGE BOUNCE (ONLY ONCE) */}
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{
-          type: "spring",
-          stiffness: 180,
-          damping: 18,
-          mass: 0.9,
-        }}
-        className="relative h-full flex flex-col max-w-3xl mx-auto px-4"
-      >
-        {/* Header */}
-        <div className="pt-6 pb-4 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Academic Resource Chat
-          </h1>
-          <p className="text-sm text-zinc-400">
-            PDFs • Notes • Best explanations
-          </p>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-4 pb-32">
-          <AnimatePresence>
-            {messages.map((m) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                  m.role === "user"
-                    ? "ml-auto bg-blue-600"
-                    : "bg-zinc-800/80 backdrop-blur"
-                }`}
-              >
-                <p className="text-sm leading-relaxed">{m.text}</p>
-
-                {m.links && (
-                  <div className="mt-3 space-y-2">
-                    {m.links.map((l) => (
-                      <a
-                        key={l.url}
-                        href={l.url}
-                        target="_blank"
-                        className="flex items-center gap-2 text-sm bg-black/40 hover:bg-black/60 transition rounded-lg px-3 py-2"
-                      >
-                        <FileText size={16} />
-                        {l.title}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Subject Quick Picks */}
-        <div className="absolute bottom-24 left-0 right-0 px-4">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {SUBJECTS.map((s) => (
-              <button
-                key={s}
-                onClick={() => send(s)}
-                className="whitespace-nowrap text-sm px-4 py-2 rounded-full bg-zinc-800/80 hover:bg-zinc-700 transition"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Input */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black to-transparent">
-          <div className="flex items-center gap-2 bg-zinc-900/80 backdrop-blur rounded-2xl px-3 py-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send(input)}
-              placeholder="Ask for notes, PDFs, explanations..."
-              className="flex-1 bg-transparent outline-none text-sm"
-            />
-            <button
-              onClick={() => send(input)}
-              className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
+      {/* SCROLL AREA */}
+      <div className="flex-1 overflow-y-auto mt-6 space-y-4 pb-4 px-2">
+        <AnimatePresence>
+          {messages.map((m) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`max-w-[85%] px-4 py-3 rounded-2xl ${
+                m.role === "user" ? "ml-auto bg-blue-600" : "bg-zinc-800"
+              }`}
             >
-              <Send size={16} />
-            </button>
-          </div>
+              <p className="text-sm whitespace-pre-line">{m.text}</p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        <div ref={bottomRef} />
+      </div>
+
+      {/* INPUT BAR (INSIDE FLOW) */}
+      <div className="shrink-0 py-3 bg-black/60 backdrop-blur">
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            className="flex-1 bg-zinc-900 px-3 py-2 rounded-xl outline-none"
+            placeholder="Any Resources related to your degree..."
+          />
+          <button onClick={send} className="bg-blue-600 px-4 rounded-xl">
+            Send
+          </button>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
