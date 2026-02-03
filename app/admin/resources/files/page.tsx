@@ -35,7 +35,7 @@ export default function AdminFilesPage() {
 
   /* ---------- load structure ---------- */
   useEffect(() => {
-    fetch("/api/structure")
+    fetch("/api/admin/structure")
       .then((r) => r.json())
       .then(setDegrees);
   }, []);
