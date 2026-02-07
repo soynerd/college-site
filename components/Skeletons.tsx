@@ -47,3 +47,35 @@ export function MapSkeleton() {
     </div>
   );
 }
+
+export function FacultyCardSkeleton() {
+  return (
+    <div className="rounded-2xl bg-zinc-900 p-3 shadow-md animate-pulse">
+      <div className="h-40 w-full rounded-xl bg-zinc-800 mb-3" />
+      <div className="h-4 w-3/4 bg-zinc-800 rounded mb-2" />
+      <div className="h-3 w-1/3 bg-zinc-800 rounded" />
+    </div>
+  );
+}
+
+export function FacultySkeleton() {
+  return (
+    <div className="animate-pulse space-y-6 mt-10 mx-3">
+      <div className="flex items-center gap-4">
+        <div className="h-16 w-16 rounded-xl bg-zinc-700" />
+        <div className="space-y-2">
+          <div className="h-4 w-40 bg-zinc-700 rounded" />
+          <div className="h-3 w-28 bg-zinc-600 rounded" />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="h-3 w-full bg-zinc-700 rounded" />
+        <div className="h-3 w-full bg-zinc-700 rounded" />
+        <div className="h-3 w-full bg-zinc-700 rounded" />
+      </div>
+
+      <div className="h-12 w-full bg-zinc-700 rounded-xl" />
+    </div>
+  );
+}

@@ -66,7 +66,7 @@ export default function Screen({ data }: { data: { user: User | null } }) {
               {active === "home" && <Home />}
 
               <Suspense fallback={<PageSkeleton />}>
-                {active === "search" && <Search />}
+                {active === "search" && <Search user={data.user} />}
                 {active === "notify" && <Notifications />}
                 {active === "profile" && <Profile user={data.user} />}
               </Suspense>

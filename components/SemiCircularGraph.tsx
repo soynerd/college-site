@@ -1,13 +1,13 @@
-import type { Faculty } from "@/lib/types/faculty";
+import { Faculty } from "@prisma/client";
 import { div } from "framer-motion/client";
 import { PieChart, Pie, Label, ResponsiveContainer, Tooltip } from "recharts";
 
 export default function SemiCircleGraph({ f }: { f: Faculty }) {
-  const total = f.outOf || 1;
+  const total = f.totalReviews || 1;
   const goatPercentage = Math.round((f.goat / total) * 100);
   const passablePercentage = Math.round((f.passable / total) * 100);
   const sleepInducerPercentage = Math.round((f.sleepInducer / total) * 100);
-  const unbearablePercentage = Math.round((f.Unbearable / total) * 100);
+  const unbearablePercentage = Math.round((f.unbearable / total) * 100);
   const maxPercentage = Math.max(
     goatPercentage,
     passablePercentage,
@@ -33,7 +33,7 @@ export default function SemiCircleGraph({ f }: { f: Faculty }) {
     { name: "GOAT", value: f.goat, fill: "#0088FE" },
     { name: "Passable", value: f.passable, fill: "#00C49F" },
     { name: "Sleep Inducer", value: f.sleepInducer, fill: "#FFBB28" },
-    { name: "Unbearable", value: f.Unbearable, fill: "#FF8042" },
+    { name: "Unbearable", value: f.unbearable, fill: "#FF8042" },
   ];
 
   return (
@@ -44,7 +44,7 @@ export default function SemiCircleGraph({ f }: { f: Faculty }) {
           <Tooltip
             formatter={(value, name) => {
               const num = Number(value ?? 1);
-              const total = Number(f.outOf ?? 1);
+              const total = Number(f.totalReviews ?? 1);
               return [`${Math.round((num / total) * 100)}%`, name];
             }}
             contentStyle={{
