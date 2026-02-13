@@ -23,10 +23,8 @@ export function PageSkeleton() {
 export function MapSkeleton() {
   return (
     <div className="relative h-full w-full overflow-hidden bg-zinc-900">
-      {/* shimmer background */}
       <div className="absolute inset-0 animate-pulse bg-linear-to-br from-zinc-800 via-zinc-700 to-zinc-800" />
 
-      {/* fake markers */}
       <div className="absolute inset-0">
         {Array.from({ length: 8 }).map((_, i) => (
           <span
@@ -40,7 +38,6 @@ export function MapSkeleton() {
         ))}
       </div>
 
-      {/* loading text */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-xs text-white">
         Loading map…
       </div>
@@ -76,6 +73,29 @@ export function FacultySkeleton() {
       </div>
 
       <div className="h-12 w-full bg-zinc-700 rounded-xl" />
+    </div>
+  );
+}
+
+export function PostSkeleton() {
+  return (
+    <div className="w-full max-w-180 mx-auto bg-black animate-pulse">
+      <div className="flex justify-between px-4 py-3">
+        <div className="h-4 w-32 bg-neutral-800 rounded" />
+        <div className="h-4 w-20 bg-neutral-800 rounded" />
+      </div>
+
+      <div className="aspect-square bg-neutral-800" />
+
+      <div className="flex gap-4 px-4 py-3">
+        <div className="h-6 w-6 bg-neutral-800 rounded-full" />
+        <div className="h-6 w-6 bg-neutral-800 rounded-full" />
+      </div>
+
+      <div className="px-4 pb-4 space-y-2">
+        <div className="h-4 w-3/4 bg-neutral-800 rounded" />
+        <div className="h-4 w-1/2 bg-neutral-800 rounded" />
+      </div>
     </div>
   );
 }
