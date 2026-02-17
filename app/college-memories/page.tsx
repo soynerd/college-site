@@ -25,7 +25,6 @@ export default function CollegeMemoriesPage() {
 
     const data = await res.json();
 
-    // 🔒 DEDUPE BY ID (CRITICAL)
     setPosts((prev) => {
       const map = new Map<number, Post>();
       [...prev, ...data.posts].forEach((p) => map.set(p.id, p));
@@ -34,7 +33,6 @@ export default function CollegeMemoriesPage() {
 
     setCursor(data.nextCursor);
 
-    // ✅ CORRECT hasMore LOGIC
     if (data.posts.length < LIMIT) {
       setHasMore(false);
     }
@@ -42,7 +40,6 @@ export default function CollegeMemoriesPage() {
     setLoading(false);
   };
 
-  // Initial load
   useEffect(() => {
     loadPosts();
   }, []);
