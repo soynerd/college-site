@@ -40,7 +40,6 @@ export default function SemiCircleGraph({ f }: { f: Faculty }) {
     <div className="w-full max-w-2xl h-80 mx-auto absolute left-0 right-0">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          {/* 🔥 TOOLTIP ON HOVER */}
           <Tooltip
             formatter={(value, name) => {
               const num = Number(value ?? 1);
