@@ -18,8 +18,9 @@ import {
 } from "lucide-react";
 import { saveUser } from "@/lib/data/saveUser";
 import { ProfileForm } from "@/lib/types/profileForm";
-import { useStructure } from "@/components/useStructure";
+import { useStructure } from "@/lib/hooks/useStructure";
 import { Dropdown } from "@/components/Dropdown";
+import { signOut } from "next-auth/react";
 
 const SEMESTER_MAP: Record<string, number> = {
   "b-tech": 8,
@@ -297,7 +298,10 @@ export default function Profile({ user }: { user: User | null }) {
             Upload resources
           </button>
 
-          <button className="w-full flex gap-2 justify-center items-center py-3 rounded-xl bg-zinc-800 mt-3">
+          <button
+            className="w-full flex gap-2 justify-center items-center py-3 rounded-xl bg-zinc-800 mt-3"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
             <LogOut size={16} /> Logout
           </button>
         </Section>
