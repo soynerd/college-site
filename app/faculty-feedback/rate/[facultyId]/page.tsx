@@ -63,13 +63,15 @@ export default function FacultyRatePage() {
         category,
         traits,
       }),
-    }).then(() => setShowThanks(true));
+    })
+      .then((res) => res.json())
+      .then((data) => (data.error && alert(data.error)) || setShowThanks(true));
   }
 
   return !faculty ? (
     <FacultySkeleton />
   ) : (
-    <div className="min-h-dvh bg-linear-to-br from-zinc-900 via-black to-zinc-900 text-white px-4 py-6">
+    <div className="h-dvh bg-linear-to-br from-zinc-900 via-black to-zinc-900 text-white px-4 py-6 overflow-y-auto">
       <div className="max-w-md mx-auto space-y-8">
         {/* Faculty header */}
         <div className="flex items-center gap-4">
@@ -148,7 +150,7 @@ export default function FacultyRatePage() {
           </motion.button>
         ) : (
           <motion.button disabled className="opacity-70">
-            <span className="inline-flex items-center gap-2">
+            <span className="inline-flex justify-center items-center gap-2 w-full">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
               Submitting…
             </span>
