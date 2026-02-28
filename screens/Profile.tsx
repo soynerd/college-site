@@ -97,8 +97,13 @@ export default function Profile({ user }: { user: User | null }) {
   const percent = completion(form);
 
   /* image preview */
-  const onImage = (file: File) =>
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageKey, setImageKey] = useState<string | null>(null);
+
+  const onImage = (file: File) => {
+    setImageFile(file);
     setForm({ ...form, photo: URL.createObjectURL(file) });
+  };
 
   /* ---------- auto location fetch ---------- */
   const fetchLocation = () => {
@@ -124,9 +129,31 @@ export default function Profile({ user }: { user: User | null }) {
   /* save */
   const saveProfile = async () => {
     setSaving(true);
-    console.log(form);
-    await saveUser(form);
-    setInitialForm(form);
+
+    let finalImage = form.photo;
+
+    if (imageFile) {
+      const data = new FormData();
+      data.append("file", imageFile);
+      data.append("email", user.email!);
+      data.append("oldUrl", user.image || "");
+
+      const res = await fetch("/api/user/upload-image", {
+        method: "POST",
+        body: data,
+      });
+
+      const result = await res.json();
+      finalImage = result.url;
+    }
+
+    const updated = { ...form, photo: finalImage };
+
+    await saveUser(updated);
+
+    setInitialForm(updated);
+    setForm(updated);
+    setImageFile(null);
     setSaving(false);
   };
 
@@ -282,6 +309,10 @@ export default function Profile({ user }: { user: User | null }) {
 
         {/* account info */}
         <Section title="Account info">
+          <Info label="Total Visits" value={user.totalVisits} />
+          <Info label="Faculty Reviews Left" value={user.totalReviewsLeft} />
+          <Info label="Faculty Reviews Completed" value={user.totalReviews} />
+          <div className="w-full h-px bg-gray-400" />
           <Info label="Joined" value={formatDate(user.createdAt)} />
           <Info label="Last login" value={timeAgo(user.lastLoginAt)} />
           <Info label="Login method" value={user.provider} />

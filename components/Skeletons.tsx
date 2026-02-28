@@ -99,3 +99,48 @@ export function PostSkeleton() {
     </div>
   );
 }
+
+export function PlacesSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#0f0f0f] text-white pb-24 animate-pulse">
+      {/* Header */}
+      <div className="p-4 flex justify-between items-center">
+        <div className="h-6 w-40 bg-zinc-800 rounded-md" />
+        <div className="h-10 w-28 bg-zinc-800 rounded-xl" />
+      </div>
+
+      {/* Mood Selector */}
+      <div className="flex gap-3 px-4 pb-4 overflow-x-auto">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-9 w-24 bg-zinc-800 rounded-full shrink-0" />
+        ))}
+      </div>
+
+      {/* Filter Chips */}
+      <div className="flex gap-3 px-4 pb-4">
+        <div className="h-10 w-32 bg-zinc-800 rounded-xl" />
+        <div className="h-10 w-28 bg-zinc-800 rounded-xl" />
+        <div className="h-10 w-10 bg-zinc-800 rounded-xl" />
+      </div>
+
+      {/* Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="bg-[#1a1a1a] rounded-2xl overflow-hidden">
+            <div className="h-48 bg-zinc-800" />
+            <div className="p-4 space-y-3">
+              <div className="h-5 w-3/4 bg-zinc-800 rounded-md" />
+              <div className="h-4 w-1/3 bg-zinc-800 rounded-md" />
+              <div className="h-4 w-1/2 bg-zinc-800 rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Load More */}
+      <div className="flex justify-center">
+        <div className="h-12 w-40 bg-zinc-800 rounded-xl" />
+      </div>
+    </div>
+  );
+}
