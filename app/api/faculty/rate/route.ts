@@ -107,6 +107,7 @@ export async function POST(req: Request) {
         await prisma.user.update({
             where: { id: user.id },
             data: {
+                totalReviews: { increment: 1 },
                 totalReviewsLeft: { decrement: 1 },
             },
         });

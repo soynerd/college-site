@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prismaClient"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/authOptions" // <-- important
+import { authOptions } from "@/lib/authOptions"
 
 export async function POST(
     req: NextRequest,
@@ -34,12 +34,6 @@ export async function POST(
         create: { rating, userId, placeId },
     })
 
-    await prisma.user.update({
-        where: { id: userId },
-        data: {
-            totalVisits: { increment: 1 },
-        },
-    })
 
     return NextResponse.json({ success: true })
 }
