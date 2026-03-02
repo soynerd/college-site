@@ -58,13 +58,13 @@ export default function EditPlacePage() {
       data.append("image", imageFile);
     }
 
-    await fetch(`/api/places/${id}`, {
+    await fetch(`/api/admin/places/${id}`, {
       method: "PUT",
       body: data,
     });
 
     setSaving(false);
-    router.push("/places");
+    router.push("/admin/places/manage");
   };
 
   const handleDelete = async () => {
@@ -73,11 +73,11 @@ export default function EditPlacePage() {
     );
     if (!confirmDelete) return;
 
-    await fetch(`/api/places/${id}`, {
+    await fetch(`/api/admin/places/${id}`, {
       method: "DELETE",
     });
 
-    router.push("/places");
+    router.push("/admin/places/manage");
   };
 
   return (

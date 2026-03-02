@@ -63,7 +63,7 @@ export default function CreatePlacePage() {
 
     data.append("image", imageFile);
 
-    await fetch("/api/places/create", {
+    await fetch("/api/admin/places/create", {
       method: "POST",
       body: data,
     });
