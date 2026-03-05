@@ -1,7 +1,7 @@
 "use client";
 
 import { useScroll, useTransform, motion } from "motion/react";
-import { useRef, useState, useMemo, useEffect } from "react";
+import { useRef, useState, useMemo, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { Filter } from "lucide-react";
 
@@ -14,6 +14,8 @@ import {
 import SemiCircleGraph from "@/components/SemiCircularGraph";
 import { Faculty } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { User } from "@prisma/client";
+import { getUser } from "@/lib/data/getUser";
 
 export default function ParallaxScroll({
   data,
@@ -31,6 +33,7 @@ export default function ParallaxScroll({
   const [type, setType] = useState<"ALL" | "REGULAR" | "CONTRACT">("ALL");
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reviewsLeft, setReviewsLeft] = useState<number | null>(null);
 
   const allDepartments = useMemo(
     () => [...new Set(data.map((f) => f.department))],
@@ -73,6 +76,12 @@ export default function ParallaxScroll({
     filteredData.slice(chunk * 2),
   ];
   const motions = [y1, y2, y3];
+
+  useEffect(() => {
+    getUser().then((user) => {
+      setReviewsLeft(user?.totalReviewsLeft ?? null);
+    });
+  }, []);
 
   return (
     <>
@@ -171,14 +180,24 @@ export default function ParallaxScroll({
                         <SemiCircleGraph f={f} />
                       </div>
 
-                      <button
-                        onClick={() =>
-                          router.push(`faculty-feedback/rate/${f.id}`)
-                        }
-                        className="w-2/3 mx-auto mt-6 rounded-xl py-3 bg-white text-black font-semibold"
-                      >
-                        Submit Feedback
-                      </button>
+                      {reviewsLeft === 0 ? (
+                        <button
+                          className="w-2/3 mx-auto mt-6 rounded-xl py-3 bg-white text-black font-semibold opacity-75"
+                          disabled={reviewsLeft === 0}
+                        >
+                          Review Quota Over +_+
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            router.push(`faculty-feedback/rate/${f.id}`)
+                          }
+                          className="w-2/3 mx-auto mt-6 rounded-xl py-3 bg-white text-black font-semibold"
+                          disabled={reviewsLeft === 0}
+                        >
+                          Submit Feedback
+                        </button>
+                      )}
                     </ModalContent>
                   </ModalBody>
                 </Modal>
