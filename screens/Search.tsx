@@ -1,264 +1,322 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, FileText } from "lucide-react";
+import { Folder, FolderOpen, FileText, Download, X } from "lucide-react";
+import { SearchSkeleton } from "@/components/Skeletons";
 import { User } from "@prisma/client";
-import { getSubjects } from "@/lib/data/getSubjects";
-import { getFiles } from "@/lib/data/getFiles";
-import { File } from "@prisma/client";
 
-/* ---------------- types ---------------- */
-
-type Subject = { id: string; name: string };
-
-type Msg = {
-  id: string;
-  role: "user" | "bot";
-  text: string;
-  links?: { title: string; url: string }[];
-};
-
-/* ---------------- helpers ---------------- */
-
-const bot = (text: string, links?: Msg["links"]): Msg => ({
-  id: crypto.randomUUID(),
-  role: "bot",
-  text,
-  links,
-});
-
-const userMsg = (text: string): Msg => ({
-  id: crypto.randomUUID(),
-  role: "user",
-  text,
-});
-
-/* ---------------- component ---------------- */
-
-export default function ChatPage({ user }: { user: User | null }) {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  /* ---------- localStorage ---------- */
-
-  /* ---------- localStorage ---------- */
-  useEffect(() => {
-    const saved = localStorage.getItem("academic-chat");
-
-    if (saved) {
-      try {
-        setMessages(JSON.parse(saved));
-      } catch {
-        localStorage.removeItem("academic-chat");
-      }
-    }
-
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-
-    if (messages.length === 0) {
-      setMessages([
-        bot("Hi 👋 Ask me for notes, slides, or PYQs related to your degree."),
-      ]);
-    }
-  }, [hydrated]);
-
-  /* ---------- greet + load subjects ---------- */
-
-  useEffect(() => {
-    (async () => {
-      if (!user?.degree || !user?.department || !user?.semester) {
-        setMessages((m) => [
-          ...m,
-          bot("⚠️ Please complete your profile to continue."),
-        ]);
-        return;
-      }
-
-      const data = await getSubjects(
-        user.degree,
-        user.department,
-        user.semester,
-      );
-
-      setSubjects(
-        data?.subjects.map((s) => ({ id: s.id, name: s.name })) || [],
-      );
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem("academic-chat", JSON.stringify(messages));
-  }, [messages, hydrated]);
-
-  /* ---------- scroll ---------- */
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  /* ---------- AI CALL ---------- */
-
-  async function callAI(query: string) {
-    const res = await fetch("/api/ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system: `
-You are an academic assistant.
-
-Rules:
-- Choose subject ONLY from provided list
-- Choose resource types ONLY from allowed list
-- If unclear, ask a clarification question
-- Keep answers short
-- Respond ONLY in valid JSON
-`,
-        user: {
-          query,
-          subjects: subjects.map((s) => s.name),
-          allowedTypes: ["notes", "slides", "pyq", "pdf"],
-        },
-      }),
-    });
-
-    return res.json();
-  }
-
-  /* ---------- send ---------- */
-
-  async function send() {
-    if (!input.trim() || loading) return;
-    const query = input;
-    setInput("");
-    setLoading(true);
-    setMessages((m) => [...m, userMsg(query)]);
-
-    if (!subjects.length) {
-      setMessages((m) => [...m, bot("Subjects are still loading. Try again.")]);
-      setLoading(false);
-      return;
-    }
-
-    let ai;
-    try {
-      ai = await callAI(query);
-      console.log("AI decision:", ai);
-    } catch {
-      setMessages((m) => [...m, bot("AI error. Try again.")]);
-      setLoading(false);
-      return;
-    }
-
-    if (ai.needClarification) {
-      setMessages((m) => [...m, bot(ai.clarificationQuestion)]);
-      setLoading(false);
-      return;
-    }
-
-    const subject = subjects.find((s) => s.name == ai.subject);
-    console.log("subj", subject);
-    if (!subject) {
-      setMessages((m) => [
-        ...m,
-        bot("This subject is not available for your semester."),
-      ]);
-      setLoading(false);
-      return;
-    }
-
-    const files: File[] = await getFiles(subject.id);
-    console.log(files);
-
-    const matched = files.filter((f) =>
-      ai.types.includes(f.contentType.toLowerCase()),
+export default function SubjectsPage({ user }: { user: User | null }) {
+  if (!user)
+    return (
+      <div className="h-full flex items-center justify-center text-white max-w-2xl mx-auto">
+        Please{" `"}
+        <a href="/login" className="text-blue-500">
+          Login
+        </a>
+        {"` "}
+        to get Resources...
+      </div>
     );
+  const userId = user.id;
 
-    if (!matched.length) {
-      setMessages((m) => [...m, bot("No matching resources found.")]);
-      setLoading(false);
-      return;
-    }
+  const [open, setOpen] = useState(false);
+  const [preview, setPreview] = useState<any>(null);
 
-    setMessages((m) => [
-      ...m,
-      bot(
-        `📘 ${subject.name}`,
-        matched.map((f) => ({
-          title: `${f.title} (${f.contentType})`,
-          url: f.url,
-        })),
-      ),
-    ]);
+  const [degrees, setDegrees] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
 
+  const [selected, setSelected] = useState<any[]>([]);
+  const [saved, setSaved] = useState<any[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("ALL");
+
+  /* ---------------- INIT ---------------- */
+  useEffect(() => {
+    fetch("/api/academic")
+      .then((r) => r.json())
+      .then((d) => setDegrees(d.degrees));
+
+    fetchSaved();
+  }, []);
+
+  const fetchSaved = async () => {
+    setLoading(true);
+    const res = await fetch(`/api/user-subjects?userId=${userId}`);
+    setSaved(await res.json());
     setLoading(false);
+  };
 
-    // --- analytics (fire and forget) ---
-    fetch("/api/analytics", {
+  /* ---------------- API ---------------- */
+  const handleDegree = async (degreeId: string) => {
+    const res = await fetch(`/api/academic?degreeId=${degreeId}`);
+    const data = await res.json();
+    setDepartments(data.departments);
+    setSubjects([]);
+  };
+
+  const handleDepartment = async (departmentId: string) => {
+    const res = await fetch(`/api/academic?departmentId=${departmentId}`);
+    const data = await res.json();
+    setSubjects(data.subjects);
+  };
+
+  /* ---------------- LOGIC ---------------- */
+  const toggle = (s: any) => {
+    setSelected((prev) =>
+      prev.find((x) => x.id === s.id)
+        ? prev.filter((x) => x.id !== s.id)
+        : [...prev, s],
+    );
+  };
+
+  const save = async () => {
+    setSaving(true);
+
+    await fetch("/api/user-subjects", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        degree: user?.degree,
-        department: user?.department,
-        semester: user?.semester,
-        subject: ai.subject,
-        types: ai.types,
-        clarified: ai.needClarification,
+        userId,
+        subjectIds: selected.map((s) => s.id),
       }),
     });
-  }
+
+    setSaving(false);
+    setOpen(false);
+    setSelected([]);
+    fetchSaved();
+  };
+
+  const filterFiles = (files: any[]) => {
+    if (filter === "ALL") return files;
+    return files.filter((f) => f.contentType === filter);
+  };
 
   /* ---------------- UI ---------------- */
-
   return (
-    <div className="h-full flex flex-col text-white max-w-3xl mx-auto">
-      <h1 className="pt-6 text-center text-xl font-semibold shrink-0">
-        Academic Resource Chat
-      </h1>
-
-      {/* SCROLL AREA */}
-      <div className="flex-1 overflow-y-auto mt-6 space-y-4 pb-4 px-2">
-        <AnimatePresence>
-          {messages.map((m) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`max-w-[85%] px-4 py-3 rounded-2xl ${
-                m.role === "user" ? "ml-auto bg-blue-600" : "bg-zinc-800"
-              }`}
-            >
-              <p className="text-sm whitespace-pre-line">{m.text}</p>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        <div ref={bottomRef} />
+    <div className="p-4 max-w-2xl mx-auto text-white">
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-semibold">My Subjects</h1>
+        <button
+          onClick={() => setOpen(true)}
+          className="bg-blue-600 px-3 py-1 rounded-lg text-sm"
+        >
+          + Add
+        </button>
       </div>
 
-      {/* INPUT BAR (INSIDE FLOW) */}
-      <div className="shrink-0 py-3 bg-black/60 backdrop-blur">
-        <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            className="flex-1 bg-zinc-900 px-3 py-2 rounded-xl outline-none"
-            placeholder="Any Resources related to your degree..."
-          />
-          <button onClick={send} className="bg-blue-600 px-4 rounded-xl">
-            Send
+      {/* FILTER TABS */}
+      <div className="flex gap-2 mb-4">
+        {["ALL", "NOTES", "PYQ", "SLIDES"].map((t) => (
+          <button
+            key={t}
+            onClick={() => setFilter(t)}
+            className={`px-3 py-1 rounded-full text-xs ${
+              filter === t ? "bg-blue-600" : "bg-zinc-800"
+            }`}
+          >
+            {t}
           </button>
-        </div>
+        ))}
       </div>
+
+      {/* CONTENT */}
+      <div className="space-y-4">
+        {loading
+          ? Array.from({ length: 3 }).map((_, i) => <SearchSkeleton key={i} />)
+          : saved.map((item: any) => {
+              const isOpen = expanded === item.subject.id;
+              const files = filterFiles(item.subject.files);
+
+              return (
+                <div
+                  key={item.subject.id}
+                  className="bg-zinc-900 rounded-xl overflow-hidden transition-all duration-200"
+                >
+                  {/* Folder Header */}
+                  <div
+                    onClick={() => setExpanded(isOpen ? null : item.subject.id)}
+                    className="flex justify-between items-center p-3 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      {isOpen ? <FolderOpen size={18} /> : <Folder size={18} />}
+                      <span>{item.subject.name}</span>
+                    </div>
+                    <span className="text-xs text-zinc-400">
+                      {files.length}
+                    </span>
+                  </div>
+
+                  {/* Files (smooth animation) */}
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.2 }}
+                        className="px-3 pb-3 space-y-2"
+                      >
+                        {files.map((f: any) => (
+                          <motion.div
+                            key={f.id}
+                            whileTap={{ scale: 0.97 }}
+                            className="flex justify-between items-center bg-zinc-800 p-2 rounded-lg"
+                          >
+                            <div
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={() => setPreview(f)}
+                            >
+                              <FileText size={16} />
+                              <span className="text-sm">{f.title}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs bg-zinc-700 px-2 py-1 rounded">
+                                {f.contentType}
+                              </span>
+                              <a
+                                href={`/api/download?url=${encodeURIComponent(f.url)}&name=${encodeURIComponent(f.title)}`}
+                              >
+                                <Download size={16} />
+                              </a>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+      </div>
+
+      {/* FILE PREVIEW */}
+      <AnimatePresence>
+        {preview && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.2 }}
+              className="bg-zinc-900 w-full h-full md:h-[85%] md:w-[85%] rounded-lg p-3 flex flex-col"
+            >
+              <div className="flex justify-between mb-2">
+                <span className="text-sm">{preview.title}</span>
+                <button onClick={() => setPreview(null)}>
+                  <X />
+                </button>
+              </div>
+
+              {/* PDF */}
+              {preview.url.endsWith(".pdf") && (
+                <iframe src={preview.url} className="w-full flex-1 rounded" />
+              )}
+
+              {/* PPTX */}
+              {preview.url.endsWith(".pptx") && (
+                <iframe
+                  src={`https://docs.google.com/gview?url=${preview.url}&embedded=true`}
+                  className="w-full flex-1 rounded"
+                />
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL */}
+      {open && (
+        <div className="fixed inset-0 bg-black/60 flex items-end mb-12 max-w-2xl mx-auto">
+          <motion.div
+            initial={{ y: 300 }}
+            animate={{ y: 0 }}
+            className="bg-zinc-900 w-full rounded-t-2xl p-4 space-y-4 max-h-[85vh] overflow-y-auto"
+          >
+            <h2 className="text-lg font-semibold">Select Subjects</h2>
+
+            {/* Degree */}
+            <select
+              onChange={(e) => handleDegree(e.target.value)}
+              className="w-full bg-zinc-800 p-3 rounded-lg"
+            >
+              <option>Select Degree</option>
+              {degrees.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Department */}
+            <select
+              onChange={(e) => handleDepartment(e.target.value)}
+              className="w-full bg-zinc-800 p-3 rounded-lg"
+            >
+              <option>Select Department</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Search */}
+            <input
+              placeholder="Search subjects..."
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-zinc-800 p-3 rounded-lg"
+            />
+
+            {/* Subject chips */}
+            <div className="flex flex-wrap gap-2">
+              {subjects
+                .filter((s) =>
+                  s.name.toLowerCase().includes(search.toLowerCase()),
+                )
+                .map((s) => {
+                  const active = selected.find((x) => x.id === s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => toggle(s)}
+                      className={`px-3 py-1 rounded-full text-sm ${
+                        active ? "bg-blue-600" : "bg-zinc-800"
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+            </div>
+
+            {/* ACTIONS */}
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setOpen(false)}
+                className="flex-1 bg-zinc-800 p-3 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={save}
+                disabled={saving}
+                className="flex-1 bg-green-600 p-3 rounded-lg flex justify-center"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
