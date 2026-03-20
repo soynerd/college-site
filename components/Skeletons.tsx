@@ -144,3 +144,13 @@ export function PlacesSkeleton() {
     </div>
   );
 }
+
+export function SearchSkeleton() {
+  return (
+    <div className="animate-pulse bg-zinc-900 p-4 rounded-xl space-y-3">
+      <div className="h-4 bg-zinc-700 rounded w-1/2" />
+      <div className="h-3 bg-zinc-800 rounded w-full" />
+      <div className="h-3 bg-zinc-800 rounded w-5/6" />
+    </div>
+  );
+}

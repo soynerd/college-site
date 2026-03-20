@@ -38,13 +38,13 @@ export default function LoginPage() {
         </div>
 
         {/* Other Providers */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <Provider icon={FaGithub} label="GitHub" />
-          <Provider icon={FaGitlab} label="GitLab" />
+          {/* <Provider icon={FaGitlab} label="GitLab" />
           <Provider icon={FaXTwitter} label="X" />
-          <Provider icon={FaInstagram} label="Instagram" />
+          <Provider icon={FaInstagram} label="Instagram" /> */}
           <Provider icon={FaDiscord} label="Discord" />
-          <Provider icon={FaApple} label="Apple" />
+          {/* <Provider icon={FaApple} label="Apple" /> */}
         </div>
 
         {/* Footer */}
