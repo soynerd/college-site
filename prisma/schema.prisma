@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              Int     @id @default(autoincrement())
+  name            String
+  username        String  @unique
+  usernameChanged Boolean @default(false)
+  email           String  @unique
+  image           String
+  role            String  @default("Student")
+  provider        String
+
+  degree     String?
+  department String?
+  semester   Int?
+  year       Int?
+
+  lat  Float?
+  long Float?
+
+  totalReviews          Int @default(0)
+  totalResourceRequests Int @default(0)
+  totalVisits           Int @default(1)
+  totalResourcesAdded   Int @default(0)
+  totalReviewsLeft      Int @default(6)
+  totalPlaceRatings     Int @default(0)
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  lastLoginAt       DateTime
+  banned            Boolean            @default(false)
+  posts             Post[]
+  likes             Like[]
+  placeRatings      PlaceRating[]
+  facultyReviewLogs FacultyReviewLog[]
+  subjects          UserSubject[]
+}
+
+enum FacultyType {
+  Regular
+  Contract
+}
+
+model Faculty {
+  id    String      @id @default(uuid())
+  name  String
+  email String      @unique
+  image String
+  type  FacultyType
+
+  department  String
+  discription String?
+
+  evaluation            Float @default(0)
+  knowledge             Float @default(0)
+  clarity_communication Float @default(0)
+
+  goat         Int @default(0)
+  passable     Int @default(0)
+  sleepInducer Int @default(0)
+  unbearable   Int @default(0)
+
+  reader            Int @default(0)
+  commonSense       Int @default(0)
+  storyteller       Int @default(0)
+  strictPookie      Int @default(0)
+  assignmentFreak   Int @default(0)
+  researchRecruiter Int @default(0)
+  selfClaimedGod    Int @default(0)
+
+  totalReviews Int                @default(0)
+  reviewLogs   FacultyReviewLog[]
+}
+
+model FacultyReviewLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  facultyId String
+  semester  Int
+  year      Int
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  faculty Faculty @relation(fields: [facultyId], references: [id])
+
+  @@unique([userId, facultyId, semester, year]) // once per sem
+}
+
+// for uploding file
+model Degree {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  departments Department[]
+  createdAt   DateTime     @default(now())
+}
+
+model Department {
+  id       String @id @default(cuid())
+  name     String
+  degreeId String
+  degree   Degree @relation(fields: [degreeId], references: [id], onDelete: Cascade)
+
+  subjects SubjectDepartment[]
+
+  @@unique([name, degreeId])
+}
+
+model Subject {
+  id       String @id @default(cuid())
+  name     String @unique
+  semester Int
+
+  departments SubjectDepartment[]
+  files       File[]
+
+  createdAt    DateTime      @default(now())
+  userSubjects UserSubject[]
+}
+
+model SubjectDepartment {
+  subjectId    String
+  departmentId String
+
+  subject    Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@id([subjectId, departmentId])
+}
+
+model File {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  contentType  String
+  academicYear String?
+  tags         String[]
+
+  summary  String?
+  embedded Boolean @default(false)
+  url      String
+  type     String
+
+  createdAt DateTime @default(now())
+}
+
+model UserSubject {
+  userId    Int
+  subjectId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, subjectId]) // composite PK (no duplicates)
+}
+
+model ChatAnalytics {
+  id         String @id @default(cuid())
+  degree     String
+  department String
+  semester   Int
+
+  subject   String?
+  types     String[]
+  clarified Boolean
+
+  createdAt DateTime @default(now())
+}
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  action    String
+  email     String
+  targetId  String?
+  createdAt DateTime @default(now())
+}
+
+// memory
+model Post {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  caption   String?
+  createdAt DateTime @default(now())
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media PostMedia[]
+  likes Like[]
+
+  @@index([createdAt])
+}
+
+model PostMedia {
+  id     Int    @id @default(autoincrement())
+  postId Int
+  url    String
+  type   String // image | video
+  order  Int
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Like {
+  postId Int
+  userId Int
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([postId, userId])
+}
+
+// places
+model Place {
+  id           Int      @id @default(autoincrement())
+  name         String
+  image        String
+  description  String?
+  distanceKm   Float
+  budget       String
+  timeRequired String
+  energy       String
+  crowd        String
+  mood         String[]
+  trending     Boolean  @default(false)
+  mapsUrl      String
+
+  ratings PlaceRating[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlaceRating {
+  id     Int   @id @default(autoincrement())
+  rating Float
+
+  userId  Int
+  placeId Int
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, placeId]) // prevents multiple ratings
+}

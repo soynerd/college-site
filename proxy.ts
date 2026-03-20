@@ -31,7 +31,8 @@ export default withAuth(
 function isPublicRoute(pathname: string) {
     return (
         pathname.startsWith("/api/auth") ||
-        pathname === "/login"
+        pathname === "/login" ||
+        pathname === "/api/cron/refill-reviews"
     );
 }
 
