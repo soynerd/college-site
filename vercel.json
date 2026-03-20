@@ -1,0 +1,8 @@
+{
+  "cron": [
+    {
+      "path": "/api/cron/refill-reviews",
+      "schedule": "0 0 1 * *"
+    }
+  ]
+}

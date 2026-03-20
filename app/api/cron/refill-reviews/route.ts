@@ -4,27 +4,30 @@ import { prisma } from "@/lib/prismaClient";
 export async function GET(req: Request) {
     try {
         const authHeader = req.headers.get("authorization");
-
+        console.log("Auth Header:", authHeader); // Debugging line
+        console.log("Expected Header:", `Bearer ${process.env.CRON_SECRET}`); // Debugging line
         if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const users = await prisma.user.findMany({
+        const temp = await prisma.user.findMany({
+            select: {
+                email: true,
+            },
             where: {
                 totalReviewsLeft: { lt: 6 },
             },
         });
+        console.log(temp)
 
-        for (const user of users) {
-            await prisma.user.update({
-                where: { id: user.id },
-                data: {
-                    totalReviewsLeft: {
-                        increment: 1,
-                    },
-                },
-            });
-        }
+        await prisma.user.updateMany({
+            where: {
+                totalReviewsLeft: { lt: 6 },
+            },
+            data: {
+                totalReviewsLeft: 6,
+            },
+        });
 
         return NextResponse.json({ success: true });
     } catch {
