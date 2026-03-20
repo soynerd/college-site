@@ -1,4 +1,4 @@
-import { fetchSubjects } from "../resources/actions/getSubjectsByDepartment";
+import { fetchSubjects } from "../actions/getSubjectsByDepartment";
 
 export default async function SubjectsPage({
   searchParams,
