@@ -33,6 +33,8 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState("");
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
   /* ---------- fetch degree ---------- */
   useEffect(() => {
@@ -60,6 +62,13 @@ export default function UploadPage() {
 
   /* ---------- file select ---------- */
   function onFileSelect(f: File) {
+    if (f.size > MAX_SIZE) {
+      setError("File must be less than 10MB");
+      setFile(null);
+      return;
+    }
+
+    setError("");
     setFile(f);
     setTitle(f.name);
   }
@@ -67,6 +76,7 @@ export default function UploadPage() {
   /* ---------- upload ---------- */
   function upload() {
     if (!file || !subjectId) return;
+    if (file.size > MAX_SIZE) return;
 
     const fd = new FormData();
     fd.append("file", file);
@@ -152,6 +162,7 @@ export default function UploadPage() {
         </div>
 
         {/* File drop */}
+        {error && <p className="text-red-500 text-sm">{error}</p>}
         <div
           onClick={() => fileInputRef.current?.click()}
           className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50"
