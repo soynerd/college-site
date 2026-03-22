@@ -34,7 +34,7 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_SIZE = 35 * 1024 * 1024; // 35MB
 
   /* ---------- fetch degree ---------- */
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function UploadPage() {
   /* ---------- file select ---------- */
   function onFileSelect(f: File) {
     if (f.size > MAX_SIZE) {
-      setError("File must be less than 10MB");
+      setError("File must be less than 35MB");
       setFile(null);
       return;
     }
@@ -97,6 +97,8 @@ export default function UploadPage() {
 
     xhr.onload = () => setProgress(100);
     xhr.send(fd);
+
+    setFile(null);
   }
 
   return (
