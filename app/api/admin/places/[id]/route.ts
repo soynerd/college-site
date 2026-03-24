@@ -117,64 +117,48 @@ export async function PUT(
 
 export async function DELETE(
     req: NextRequest,
-    context: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
-    const { id } = await context.params; // ✅ MUST await
-
-    const placeId = Number(id);
-
-    if (isNaN(placeId)) {
-        return NextResponse.json(
-            { error: "Invalid place id" },
-            { status: 400 }
-        );
-    }
+    const id = Number(params.id)
 
     const existing = await prisma.place.findUnique({
-        where: { id: placeId },
-    });
-
-    if (!existing) {
-        return NextResponse.json(
-            { error: "Place not found" },
-            { status: 404 }
-        );
-    }
+        where: { id },
+    })
 
     try {
         await prisma.place.delete({
-            where: { id: placeId },
+            where: { id },
         });
-
-        if (existing.image) {
+        if (existing?.image) {
             try {
-                const url = new URL(existing.image);
+                const url = new URL(existing.image)
 
                 const oldKey = decodeURIComponent(
                     url.pathname.startsWith("/")
                         ? url.pathname.slice(1)
                         : url.pathname
-                );
+                )
+
+                console.log("Deleting old key:", oldKey)
 
                 await r2.send(
                     new DeleteObjectCommand({
                         Bucket: process.env.R2_BUCKET_NAME!,
                         Key: oldKey,
                     })
-                );
+                )
             } catch (err) {
-                console.error("Delete failed:", err);
+                console.error("Delete failed:", err)
             }
         }
 
-        return NextResponse.json({ success: true });
-
     } catch (error) {
-        console.error("Error deleting place:", error);
-
+        console.error("Error deleting place:", error)
         return NextResponse.json(
             { error: "Failed to delete place" },
             { status: 500 }
-        );
+        )
     }
+
+    return NextResponse.json({ success: true })
 }
