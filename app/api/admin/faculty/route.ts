@@ -13,7 +13,6 @@ export async function POST(req: Request) {
     const description = form.get("description") as string;
     const image = form.get("image") as File;
     const type = form.get("type") as string;
-    console.log(type);
 
     if (!image) {
         return NextResponse.json({ error: "Image required" }, { status: 400 });

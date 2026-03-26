@@ -12,7 +12,6 @@ export default function FacultyOverview() {
   useEffect(() => {
     (async () => {
       const data = await getFaculty();
-      console.log(data);
       setData(data);
     })();
   }, []);

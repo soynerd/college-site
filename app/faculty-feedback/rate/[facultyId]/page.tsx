@@ -39,7 +39,6 @@ export default function FacultyRatePage() {
   useEffect(() => {
     (async () => {
       const d = await getFaculty(facultyId);
-      console.log(d);
       setFaculty(d);
     })();
   }, [facultyId]);

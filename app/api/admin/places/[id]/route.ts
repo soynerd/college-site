@@ -35,7 +35,6 @@ export async function PUT(
     const mood = JSON.parse(formData.get("mood") as string)
 
     const file = formData.get("image") as File | null
-    console.log("Received file:", file)  // Debug log
 
     const existing = await prisma.place.findUnique({
         where: { id: placeId },
@@ -77,8 +76,6 @@ export async function PUT(
                         ? url.pathname.slice(1)
                         : url.pathname
                 )
-
-                console.log("Deleting old key:", oldKey)
 
                 await r2.send(
                     new DeleteObjectCommand({
@@ -138,8 +135,6 @@ export async function DELETE(
                         ? url.pathname.slice(1)
                         : url.pathname
                 )
-
-                console.log("Deleting old key:", oldKey)
 
                 await r2.send(
                     new DeleteObjectCommand({
